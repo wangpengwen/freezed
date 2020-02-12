@@ -171,7 +171,7 @@ import 'single_class_constructor.dart';
 void main() {
   MyClass().copyWith(a: '42', b: 42);
 }
-'''), completes);
+'''), succeed);
       await expectLater(compile(r'''
 import 'single_class_constructor.dart';
 
@@ -202,7 +202,7 @@ import 'single_class_constructor.dart';
 void main() {
   WhateverIWant().copyWith(a: '42', b: 42);
 }
-'''), completes);
+'''), succeed);
       await expectLater(compile(r'''
 import 'single_class_constructor.dart';
 

@@ -37,41 +37,97 @@ ${shouldGenerateJson ? '@JsonSerializable()' : ''}
 class $concreteName$genericsDefinition $diagnosticable implements ${constructor.redirectedName}$genericsParameter {
   const $concreteName(${constructor.parameters.asThis()});
 
-  $concreteFromJsonConstructor
-
+$concreteFromJsonConstructor
 ${constructor.impliedProperties.map((p) => '@override $p').join()}
-
 $toStringMethod
-
 $debugFillProperties
-
 $operatorEqualMethod
-
 $hashCodeMethod
-
 $copyWithMethod
-
 $when
-
 $maybeWhen
-
 $map
-
 $maybeMap
-
 $toJson
+$copyAs
 }
 
 abstract class ${constructor.redirectedName}$genericsDefinition implements $name$genericsParameter {
   const factory ${constructor.redirectedName}(${constructor.parameters.asExpandedDefinition}) = $concreteName$genericsParameter;
-
-  $redirectedFromJsonConstructor
-
+$redirectedFromJsonConstructor
 $abstractProperties
-
 $copyWithPrototype
+$copyAsPrototype
 }
 ''';
+  }
+
+  String get copyAs {
+    final res = StringBuffer();
+    for (final targetConstructor in allConstructors) {
+      var copyAsParameters = targetConstructor.impliedProperties.map((property) {
+        final isRequired = targetConstructor.isPropertyWithNamedRequired(property.name);
+        return Parameter(
+          decorators: const [],
+          isRequired: isRequired,
+          name: property.name,
+          defaultValue: isRequired ? null : 'immutable',
+          type: isRequired ? property.type : 'Object',
+        );
+      });
+
+      final constructorParameters = StringBuffer();
+      for (final e in copyAsParameters) {
+        var param = StringBuffer();
+        if (targetConstructor.parameters.namedParameters.any((element) => e.name == element.name)) {
+          param.write('${e.name}: ');
+        }
+
+        final targetProperty = targetConstructor.parameterWithName(e.name);
+        final hasMatchingLocalProperty = constructor.hasMatchingPropertyWith(name: e.name, type: e.type);
+        if (e.isRequired) {
+          param.write('${e.name} as ${targetProperty.type}');
+        } else if (hasMatchingLocalProperty) {
+          param.write('${e.name} == immutable ? this.${e.name} : ${e.name} as ${targetProperty.type}');
+        } else {
+          param.clear();
+        }
+
+        if (param.isNotEmpty) constructorParameters..write(param)..write(',');
+      }
+
+      res.write('''
+@override
+${targetConstructor.redirectedName}$genericsParameter ${targetConstructor.copyAsName}(${copyAsParameters.isNotEmpty ? '{${copyAsParameters.join(',')}}' : ''}) {
+  return ${targetConstructor.redirectedName}$genericsParameter($constructorParameters);
+}
+''');
+    }
+    return res.toString();
+  }
+
+  String get copyAsPrototype {
+    final res = StringBuffer();
+    for (final constructor in allConstructors) {
+      var parameter = constructor.impliedProperties.map((property) {
+        return Parameter(
+          decorators: property.decorators,
+          isRequired:
+              this.constructor.impliedProperties.every((commonProperty) => commonProperty.name != property.name),
+          name: property.name,
+          type: property.type,
+        );
+      }).join(',');
+      if (parameter.isNotEmpty) {
+        parameter = '{$parameter}';
+      }
+
+      res.write('''
+@override
+${constructor.redirectedName}$genericsParameter ${constructor.copyAsName}($parameter);
+''');
+    }
+    return res.toString();
   }
 
   String get redirectedFromJsonConstructor {

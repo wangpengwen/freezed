@@ -13,6 +13,7 @@ class Abstract {
     @required this.abstractProperties,
     @required this.shouldGenerateJson,
     @required this.allConstructors,
+    @required this.commonProperties,
   });
 
   final String name;
@@ -21,26 +22,44 @@ class Abstract {
   final GenericsDefinitionTemplate genericsDefinition;
   final List<ConstructorDetails> allConstructors;
   final bool shouldGenerateJson;
+  final List<Property> commonProperties;
 
   @override
   String toString() {
     return '''
 abstract class _\$$name$genericsDefinition {
 ${abstractProperties.join()}
-
 $copyWithPrototype
-
 $when
-
 $maybeWhen
-
 $map
-
 $maybeMap
-
 $toJson
+$copyAs
 }
 ''';
+  }
+
+  String get copyAs {
+    final res = StringBuffer();
+    for (final constructor in allConstructors) {
+      var parameter = constructor.impliedProperties.map((property) {
+        return Parameter(
+          decorators: property.decorators,
+          isRequired: commonProperties.every((commonProperty) => commonProperty.name != property.name),
+          name: property.name,
+          type: property.type,
+        );
+      }).join(',');
+      if (parameter.isNotEmpty) {
+        parameter = '{$parameter}';
+      }
+
+      res.write('''
+${constructor.redirectedName}$genericsParameter ${constructor.copyAsName}($parameter);
+''');
+    }
+    return res.toString();
   }
 
   String get toJson {

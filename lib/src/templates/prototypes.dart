@@ -13,9 +13,6 @@ List<String> parseDecorators(List<ElementAnnotation> metadata) {
 }
 
 String getRedirectedConstructorName(ConstructorElement constructor) {
-  if (constructor.name == 'fixed') {
-    print(constructor.redirectedConstructor);
-  }
   final location = constructor.nameOffset;
   final source = constructor.source.contents.data;
 
@@ -71,10 +68,19 @@ String _whenPrototype(
     areCallbacksRequired: areCallbacksRequired,
     name: name,
     ctor2parameters: (constructor) {
+      Iterable<Parameter> unrequire(List<Parameter> p) {
+        return p.map((p) => Parameter(
+              decorators: p.decorators,
+              name: p.name,
+              isRequired: false,
+              type: p.type,
+            ));
+      }
+
       return ParametersTemplate([
-        ...constructor.parameters.positionalParameters,
-        ...constructor.parameters.optionalPositionalParameters,
-        ...constructor.parameters.namedParameters,
+        ...unrequire(constructor.parameters.positionalParameters),
+        ...unrequire(constructor.parameters.optionalPositionalParameters),
+        ...unrequire(constructor.parameters.namedParameters),
       ]);
     },
   );
